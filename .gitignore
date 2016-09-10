@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+/local.properties
+.project
+.pydevproject
+.settings/
+/tmp/
