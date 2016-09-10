@@ -20,7 +20,7 @@ Getting Support
 
 Go to the following website if you need support:
 
-     http://splunk-base.splunk.com/apps/1818/answers/
+     http://splunk-base.splunk.com/apps/3308/answers/
 
 You can access the source-code and get technical details about the app at:
 
