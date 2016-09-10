@@ -10,12 +10,22 @@ from logging import handlers
 import sys
 import time
 import os
+import re
 import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     
     def handle_request(self):
         
+        # Verify that the request matches the path, return a 404 otherwise
+        if self.server.path is not None and not re.match(self.server.path, self.path):
+            self.send_response(404)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write('{success:"false"}')
+            return
+            
+        # Make the resulting data
         result = {
                   'path' : self.path,
                   'command' : self.command,
@@ -23,8 +33,14 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                   'client_port' : self.client_address[1]
                  }
         
+        # Output the result
         self.server.output_results([result])
+        
+        # Send a 200 request noting that this worked
         self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write('{success:"true"}')
         
     def do_GET(self):
         self.handle_request()
@@ -33,9 +49,16 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.handle_request()
         
 class WebServer:
-    def __init__(self, output_results, port):
+    def __init__(self, output_results, port, path):
+        
+        # Make an instance of the server
         server = HTTPServer(('', port), LogRequestsInSplunkHandler)
+        
+        # Save the parameters
         server.output_results = output_results
+        server.path = path
+        
+        # Start the serving
         server.serve_forever()
     
 class WebhooksInput(ModularInput):
@@ -47,16 +70,15 @@ class WebhooksInput(ModularInput):
 
         scheme_args = {'title': "Webhooks Input",
                        'description': "Retrieve information from webhooks input",
-                       'use_external_validation': "true",
-                       'streaming_mode': "xml",
                        'use_single_instance': "false"}
         
         args = [
                 IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
+                Field("path", "Path", 'A wildcard that the path of requests must match (needs to begin with a "/")', none_allowed=True, empty_allowed=True),
                 #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=False)
                 ]
         
-        ModularInput.__init__( self, scheme_args, args )
+        ModularInput.__init__( self, scheme_args, args, logger_name="webhooks_modular_input" )
         
         if timeout > 0:
             self.timeout = timeout
@@ -64,6 +86,18 @@ class WebhooksInput(ModularInput):
             self.timeout = 30
             
         self.http_daemons = []
+        
+    @classmethod
+    def wildcard_to_re(cls, wildcard):
+        """
+        Convert the given wildcard to a regular expression.
+        
+        Arguments:
+        wildcard -- A string representing a wild-card (like "/some_path/*")
+        """
+        
+        r = re.escape(wildcard)
+        return r.replace('\*', ".*")
 
     def run(self, stanza, cleaned_params, input_config):
         
@@ -73,15 +107,22 @@ class WebhooksInput(ModularInput):
         sourcetype = cleaned_params.get("sourcetype", "webhooks_input")
         host       = cleaned_params.get("host", None)
         index      = cleaned_params.get("index", "default")
+        path       = cleaned_params.get("path", None)
         source     = stanza
+
+        # Convert the path to a regular expression
+        if path is not None and path != "":
+            path_re = self.wildcard_to_re(path)
+        else:
+            path_re = None
 
         def output_results(results):
             for result in results:
                 self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
         # Start the web-server
-        self.logger.info("Starting server on port=%r", port)  
-        httpd = WebServer(output_results, port)
+        self.logger.info("Starting server on port=%r, path=%r", port, path_re)  
+        httpd = WebServer(output_results, port, path_re)
         self.http_daemons.append(httpd)
             
 if __name__ == '__main__':
