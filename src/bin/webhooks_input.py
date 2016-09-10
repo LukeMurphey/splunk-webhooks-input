@@ -20,8 +20,10 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         # Get the simple path (without arguments)
         if self.path.find("?") < 0:
             path_only = self.path
+            query = ""
         else:
             path_only = self.path[0:self.path.find("?")]
+            query = self.path[self.path.find("?")+1:]
         
         # Verify that the request matches the path, return a 404 otherwise
         if self.server.path is not None and not re.match(self.server.path, path_only):
@@ -35,6 +37,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         result = {
                   'path' : path_only,
                   'full_path' : self.path,
+                  'query' : query,
                   'command' : self.command,
                   'client_address' : self.client_address[0],
                   'client_port' : self.client_address[1]
@@ -81,7 +84,7 @@ class WebhooksInput(ModularInput):
         
         args = [
                 IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
-                Field("path", "Path", 'A wildcard that the path of requests must match (needs to begin with a "/")', none_allowed=True, empty_allowed=True),
+                Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True),
                 #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=False)
                 ]
         
