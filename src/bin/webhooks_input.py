@@ -14,7 +14,7 @@ import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     
-    def do_GET(self):
+    def handle_request(self):
         
         result = {
                   'path' : self.path,
@@ -26,9 +26,11 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.server.output_results([result])
         self.send_response(200)
         
+    def do_GET(self):
+        self.handle_request()
+        
     def do_POST(self):
-        self.logger.warn("Got something!!")
-        self.send_response(200)
+        self.handle_request()
         
 class WebServer:
     def __init__(self, output_results, port):
@@ -43,15 +45,15 @@ class WebhooksInput(ModularInput):
     
     def __init__(self, timeout=30, **kwargs):
 
-        scheme_args = {'title': "Webhook Input",
+        scheme_args = {'title': "Webhooks Input",
                        'description': "Retrieve information from webhooks input",
                        'use_external_validation': "true",
                        'streaming_mode': "xml",
-                       'use_single_instance': "true"}
+                       'use_single_instance': "false"}
         
         args = [
                 IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
-                DurationField("interval", "Interval", "The interval defining how often to perform the check; can include time units (e.g. 15m for 15 minutes, 8h for 8 hours)", empty_allowed=False)
+                #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=False)
                 ]
         
         ModularInput.__init__( self, scheme_args, args )
@@ -61,7 +63,7 @@ class WebhooksInput(ModularInput):
         else:
             self.timeout = 30
             
-        self.httpd = None
+        self.http_daemons = []
 
     def run(self, stanza, cleaned_params, input_config):
         
@@ -78,9 +80,9 @@ class WebhooksInput(ModularInput):
                 self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
         # Start the web-server
-        if self.httpd is None:
-            self.logger.info("Starting server on port=%r", port)  
-            self.httpd = WebServer(output_results, port) 
+        self.logger.info("Starting server on port=%r", port)  
+        httpd = WebServer(output_results, port)
+        self.http_daemons.append(httpd)
             
 if __name__ == '__main__':
     webhooks_input = None
