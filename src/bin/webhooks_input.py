@@ -46,7 +46,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                 
         # Parse the query string if need be
         if query is not None and query != "":
-            query_args = urlparse.parse_qs(query)
+            query_args = urlparse.parse_qs(query, keep_blank_values=True)
         else:
             query_args = None
             

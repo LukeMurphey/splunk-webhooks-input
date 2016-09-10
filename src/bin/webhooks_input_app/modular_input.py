@@ -575,7 +575,7 @@ class ModularInput():
     
     def escape_spaces(self, s, encapsulate_in_double_quotes=False):
         """
-        If the string contains spaces, then add double quotes around the string. This is useful when outputting fields and values to Splunk since a space will cause Splunk to not recognize the entire value.
+        If the string contains spaces or is empty, then add double quotes around the string. This is useful when outputting fields and values to Splunk since a space will cause Splunk to not recognize the entire value.
         
         Arguments:
         s -- A string to escape.
@@ -591,7 +591,7 @@ class ModularInput():
             s = s.replace('"', '\\"')
             s = s.replace("'", "\\'")
         
-        if s is not None and (" " in s or encapsulate_in_double_quotes):
+        if s is not None and (" " in s or encapsulate_in_double_quotes or s == ""):
             return '"' + s + '"'
         
         else:
