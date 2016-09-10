@@ -12,11 +12,12 @@ import time
 import os
 import re
 import urlparse
+from cgi import parse_header, parse_multipart
 import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     
-    def handle_request(self):
+    def handle_request(self, query_args=None):
         
         # Get the simple path (without arguments)
         if self.path.find("?") < 0:
@@ -45,10 +46,16 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                  }
                 
         # Parse the query string if need be
+        if query_args is None:
+            query_args = {}
+            
         if query is not None and query != "":
-            query_args = urlparse.parse_qs(query, keep_blank_values=True)
-        else:
-            query_args = None
+            query_args_from_path = urlparse.parse_qs(query, keep_blank_values=True)
+            
+            # Merge those obtained from the URL with those obtained from the POST arguments
+            if query_args_from_path is not None:
+                query_args_from_path.update(query_args)
+                query_args = query_args_from_path
             
         # Add the query arguments to the string
         if query_args is not None:
@@ -68,10 +75,22 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.handle_request()
         
     def do_POST(self):
-        self.handle_request()
+        
+        post_args = {}
+        
+        if 'content-type' in self.headers:
+            ctype, pdict = parse_header(self.headers['content-type'])
+            
+            if ctype == 'multipart/form-data':
+                post_args = parse_multipart(self.rfile, pdict)
+            elif ctype == 'application/x-www-form-urlencoded':
+                length = int(self.headers['content-length'])
+                post_args = urlparse.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        
+        self.handle_request(post_args)
         
 class WebServer:
-    def __init__(self, output_results, port, path):
+    def __init__(self, output_results, port, path, logger=None):
         
         # Make an instance of the server
         server = HTTPServer(('', port), LogRequestsInSplunkHandler)
@@ -79,6 +98,7 @@ class WebServer:
         # Save the parameters
         server.output_results = output_results
         server.path = path
+        server.logger = logger
         
         # Start the serving
         server.serve_forever()
@@ -144,7 +164,7 @@ class WebhooksInput(ModularInput):
 
         # Start the web-server
         self.logger.info("Starting server on port=%r, path=%r", port, path_re)  
-        httpd = WebServer(output_results, port, path_re)
+        httpd = WebServer(output_results, port, path_re, logger=self.logger)
         self.http_daemons.append(httpd)
             
 if __name__ == '__main__':
