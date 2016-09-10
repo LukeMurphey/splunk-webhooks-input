@@ -11,6 +11,7 @@ import sys
 import time
 import os
 import re
+import urlparse
 import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
@@ -32,7 +33,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write('{success:"false"}')
             return
-            
+        
         # Make the resulting data
         result = {
                   'path' : path_only,
@@ -42,6 +43,17 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                   'client_address' : self.client_address[0],
                   'client_port' : self.client_address[1]
                  }
+                
+        # Parse the query string if need be
+        if query is not None and query != "":
+            query_args = urlparse.parse_qs(query)
+        else:
+            query_args = None
+            
+        # Add the query arguments to the string
+        if query_args is not None:
+            for k, v in query_args.items():
+                result["parameter_" + k] = v
         
         # Output the result
         self.server.output_results([result])
