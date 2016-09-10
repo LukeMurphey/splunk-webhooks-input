@@ -17,8 +17,14 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     
     def handle_request(self):
         
+        # Get the simple path (without arguments)
+        if self.path.find("?") < 0:
+            path_only = self.path
+        else:
+            path_only = self.path[0:self.path.find("?")]
+        
         # Verify that the request matches the path, return a 404 otherwise
-        if self.server.path is not None and not re.match(self.server.path, self.path):
+        if self.server.path is not None and not re.match(self.server.path, path_only):
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -27,7 +33,8 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             
         # Make the resulting data
         result = {
-                  'path' : self.path,
+                  'path' : path_only,
+                  'full_path' : self.path,
                   'command' : self.command,
                   'client_address' : self.client_address[0],
                   'client_port' : self.client_address[1]
