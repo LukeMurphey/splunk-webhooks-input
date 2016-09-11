@@ -110,8 +110,8 @@ class WebhooksInput(ModularInput):
     
     def __init__(self, timeout=30, **kwargs):
 
-        scheme_args = {'title': "Webhooks Input",
-                       'description': "Retrieve information from webhooks input",
+        scheme_args = {'title': "Webhook",
+                       'description': "Retrieve information from a webhook",
                        'use_single_instance': "false"}
         
         args = [
