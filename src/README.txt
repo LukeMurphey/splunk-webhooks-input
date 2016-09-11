@@ -10,7 +10,7 @@ This app provides a mechanism for indexing data from webhooks.
 Configuring Splunk
 ================================================
 
-This app exposes a new input type that can be configured in the Splunk Manager. To configure it, create a new input in the Manager under Data inputs > Webhooks.
+This app exposes a new input type that can be configured in the Splunk Manager. To configure it, create a new input in the Manager under Data inputs > Webhook.
 
 
 
