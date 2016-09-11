@@ -117,7 +117,7 @@ class WebhooksInput(ModularInput):
         args = [
                 IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
                 Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True),
-                #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=False)
+                #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=True, none_allowed=True)
                 ]
         
         ModularInput.__init__( self, scheme_args, args, logger_name="webhooks_modular_input" )
@@ -144,7 +144,6 @@ class WebhooksInput(ModularInput):
     def run(self, stanza, cleaned_params, input_config):
         
         # Make the parameters
-        interval   = cleaned_params.get("interval", 3600)
         port       = cleaned_params.get("port", 8080)
         sourcetype = cleaned_params.get("sourcetype", "webhooks_input")
         host       = cleaned_params.get("host", None)
