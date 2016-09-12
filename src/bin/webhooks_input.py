@@ -11,6 +11,7 @@ import sys
 import time
 import os
 import re
+import json
 import urlparse
 from cgi import parse_header, parse_multipart
 import splunk
@@ -32,7 +33,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write('{success:"false"}')
+            self.wfile.write(json.dumps({"success":False}))
             return
         
         # Make the resulting data
@@ -69,7 +70,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write('{success:"true"}')
+        self.wfile.write(json.dumps({"success":True}))
         
     def do_GET(self):
         self.handle_request()
