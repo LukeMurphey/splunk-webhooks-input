@@ -9,6 +9,7 @@ import time
 import os
 import hashlib
 import json
+import atexit
 from urlparse import urlparse
 
 from splunk.appserver.mrsparkle.lib.util import make_splunkhome_path
@@ -731,6 +732,9 @@ class ModularInput():
             raise Exception("Logger name cannot be empty")
         
         self.logger_name = logger_name
+        
+        # Wire up a close handler
+        atexit.register(self.do_shutdown)
                     
     def addArg(self, arg):
         """
@@ -972,7 +976,6 @@ class ModularInput():
                 
             # Allow the interval argument since it is internal but allowed even if not explicitly declared
             elif name == "interval" and self.use_single_instance == False:
-                self.logger.warn("use_single_instance=%r", self.use_single_instance)
                 pass 
             
             # Throw an exception if the argument could not be found

@@ -102,7 +102,10 @@ class WebServer:
         server.logger = logger
         
         # Start the serving
-        server.serve_forever()
+        try:
+            server.serve_forever()
+        except IOError as e:
+            self.logger.warn("IO error when serving the web-server: %s", str(e))
     
 class WebhooksInput(ModularInput):
     """
@@ -141,6 +144,19 @@ class WebhooksInput(ModularInput):
         
         r = re.escape(wildcard)
         return r.replace('\*', ".*")
+
+    def do_shutdown(self):
+        
+        to_delete_list = self.http_daemons[:]
+        
+        self.logger.info("Shutting down the server")
+        
+        for httpd in to_delete_lists:
+            httpd.socket.close()
+            httpd.shutdown()
+            
+            del self.http_daemons[httpd]
+            
 
     def run(self, stanza, cleaned_params, input_config):
         
