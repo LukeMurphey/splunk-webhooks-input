@@ -13,6 +13,7 @@ import os
 import re
 import json
 import urlparse
+import errno
 from cgi import parse_header, parse_multipart
 import splunk
 
@@ -93,19 +94,26 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
 class WebServer:
     def __init__(self, output_results, port, path, logger=None):
         
-        # Make an instance of the server
-        server = HTTPServer(('', port), LogRequestsInSplunkHandler)
-        
-        # Save the parameters
-        server.output_results = output_results
-        server.path = path
-        server.logger = logger
-        
-        # Start the serving
         try:
+            
+            # Make an instance of the server
+            server = HTTPServer(('', port), LogRequestsInSplunkHandler)
+            
+            # Save the parameters
+            server.output_results = output_results
+            server.path = path
+            server.logger = logger
+            
+            # Start the serving
+            
             server.serve_forever()
         except IOError as e:
-            self.logger.warn("IO error when serving the web-server: %s", str(e))
+            if server.logger is not None:
+                if e.errno == errno.EPIPE:
+                    # Broken pipe: happens when the input shuts down or when remote peer disconnects
+                    pass
+                else:
+                    server.logger.warn("IO error when serving the web-server: %s", str(e))
     
 class WebhooksInput(ModularInput):
     """
@@ -151,7 +159,7 @@ class WebhooksInput(ModularInput):
         
         self.logger.info("Shutting down the server")
         
-        for httpd in to_delete_lists:
+        for httpd in to_delete_list:
             httpd.socket.close()
             httpd.shutdown()
             
