@@ -34,7 +34,7 @@ FAQ
 
 Q: Can I allow non-admin users to make and edit inputs?
 
-A: Yes, just assign users the "edit_modinput_webhooks_input" capability. You will likely want to give them the "list_inputs" capability too.
+A: Yes, just assign users the "edit_modinput_webhook" capability. You will likely want to give them the "list_inputs" capability too.
 
 
 
@@ -48,4 +48,7 @@ Change History
 | 0.5     | Initial release                                                                                                  |
 |---------|------------------------------------------------------------------------------------------------------------------|
 | 0.6     | Various minor changes                                                                                            |
+|---------|------------------------------------------------------------------------------------------------------------------|
+| 0.7     | Changed input to simply "webhook" from "webhooks_input"                                                          |
+|         | Input now attempts to get an open port for 2 minutes if the port is already taken                                |
 +---------+------------------------------------------------------------------------------------------------------------------+

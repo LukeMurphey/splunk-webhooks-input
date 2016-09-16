@@ -159,7 +159,7 @@ class WebhooksInput(ModularInput):
                 #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=True, none_allowed=True)
                 ]
         
-        ModularInput.__init__( self, scheme_args, args, logger_name="webhooks_modular_input" )
+        ModularInput.__init__( self, scheme_args, args, logger_name="webhook_modular_input" )
         
         if timeout > 0:
             self.timeout = timeout
@@ -197,7 +197,7 @@ class WebhooksInput(ModularInput):
         
         # Make the parameters
         port       = cleaned_params.get("port", 8080)
-        sourcetype = cleaned_params.get("sourcetype", "webhooks_input")
+        sourcetype = cleaned_params.get("sourcetype", "webhook")
         host       = cleaned_params.get("host", None)
         index      = cleaned_params.get("index", "default")
         path       = cleaned_params.get("path", None)

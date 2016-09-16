@@ -1,4 +1,4 @@
-[webhooks_input://default]
+[webhook://default]
 * Configure an input for retrieving information from a webhook request
 
 port = <value>
