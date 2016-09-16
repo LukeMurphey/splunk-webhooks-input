@@ -92,13 +92,40 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.handle_request(post_args)
         
 class WebServer:
+    
+    MAX_ATTEMPTS_TO_START_SERVER = 60
+    
     def __init__(self, output_results, port, path, logger=None):
         
         try:
             
             # Make an instance of the server
-            server = HTTPServer(('', port), LogRequestsInSplunkHandler)
+            server = None
+            attempts = 0
             
+            while server is None and attempts < WebServer.MAX_ATTEMPTS_TO_START_SERVER:
+                try:
+                    server = HTTPServer(('', port), LogRequestsInSplunkHandler)
+                except IOError as e:
+                    
+                    # Log a message noting that port is taken
+                    if logger is not None:
+                        logger.info("The web-server could not yet be started, attempt %i of %i", attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER)
+                    
+                    server = None
+                    time.sleep(2)
+                    attempts = attempts + 1
+            
+            # Stop if the server could not be started
+            if server is None:
+                
+                # Log that it couldn't be started
+                if logger is not None:
+                    logger.info("The web-server could not be started")
+            
+                # Stop, we weren't successful
+                return
+                
             # Save the parameters
             server.output_results = output_results
             server.path = path
