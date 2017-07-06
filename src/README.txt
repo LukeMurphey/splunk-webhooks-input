@@ -62,4 +62,7 @@ Change History
 |---------|------------------------------------------------------------------------------------------------------------------|
 | 0.7     | Changed input to simply "webhook" from "webhooks_input"                                                          |
 |         | Input now attempts to get an open port for 2 minutes if the port is already taken                                |
+|---------|------------------------------------------------------------------------------------------------------------------|
+| 1.0     | Added support for parsing incoming data from the content-body                                                    |
+|         | Fixed error indicating that a socket didn't exist that sometimes happened when shutting down                     |
 +---------+------------------------------------------------------------------------------------------------------------------+
