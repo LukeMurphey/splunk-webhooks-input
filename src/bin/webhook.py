@@ -1,25 +1,29 @@
+"""
+This module implements a modular input consisting of a web-server that handles incoming Webhooks.
+"""
+
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-import SocketServer
 
-from splunk.appserver.mrsparkle.lib.util import make_splunkhome_path
-from webhooks_input_app.modular_input import ModularInput, Field, IntegerField, DurationField
-from splunk.models.base import SplunkAppObjModel
-
-import logging
-from logging import handlers
 import sys
 import time
-import os
 import re
 import json
 import urlparse
 import errno
 import collections
 from cgi import parse_header, parse_multipart
+
+from webhooks_input_app.modular_input import ModularInput, Field, IntegerField
+from webhooks_input_app.flatten import flatten
+
+from splunk.appserver.mrsparkle.lib.util import make_splunkhome_path
+from splunk.models.base import SplunkAppObjModel
 import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     
+    logger = None
+
     def handle_request(self, query_args=None):
         
         # Get the simple path (without arguments)
@@ -71,16 +75,31 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         if content_len > 0:
 
             post_body = self.rfile.read(content_len)
+            parsed_body = None
 
-            try:
-                body_json = json.loads(post_body)
-            except ValueError:
-                # Could not parse output
-                body_json = None
+            content_type = self.headers.getheader('content-type', "application/json")
+
+            # Handle plain text
+            if content_type == "text/plain":
+                parsed_body = {
+                    'data' : post_body
+                }
+
+            # Handle JSON
+            elif content_type == "application/json":
+                try:
+                    body_json = json.loads(post_body)
+                    parsed_body = flatten(body_json)
+                except ValueError:
+                    # Could not parse output
+                    parsed_body = None
+
+                    if self.logger is not None:
+                        self.logger.warn("Content body could not be parsed as JSON")
 
             # Include the data if we got some
-            if body_json is not None:
-                result.update(body_json)
+            if parsed_body is not None:
+                result.update(parsed_body)
 
         # Output the result
         self.server.output_results([result])
@@ -110,6 +129,9 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.handle_request(post_args)
 
 class WebServer:
+    """
+    This class implements an instance of a web-server that listens for incoming webhooks.
+    """
 
     MAX_ATTEMPTS_TO_START_SERVER = 60
 
@@ -150,7 +172,6 @@ class WebServer:
             server.logger = logger
             
             # Start the serving
-            
             server.serve_forever()
         except IOError as e:
             if server.logger is not None:
@@ -159,47 +180,46 @@ class WebServer:
                     pass
                 else:
                     server.logger.warn("IO error when serving the web-server: %s", str(e))
-    
+
 class WebhooksInput(ModularInput):
     """
     The webhooks input modular input runs a web-server and pipes data from the requests to Splunk.
     """
-    
+
     def __init__(self, timeout=30, **kwargs):
 
         scheme_args = {'title': "Webhook",
                        'description': "Retrieve information from a webhook",
                        'use_single_instance': "false"}
-        
+
         args = [
                 IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
-                Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True),
-                #DurationField("interval", "Interval", "The interval defining how often to make sure the server is running", empty_allowed=True, none_allowed=True)
+                Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True)
                 ]
-        
+
         ModularInput.__init__( self, scheme_args, args, logger_name="webhook_modular_input" )
-        
+
         if timeout > 0:
             self.timeout = timeout
         else:
             self.timeout = 30
-            
+
         self.http_daemons = []
-        
+
     @classmethod
     def wildcard_to_re(cls, wildcard):
         """
         Convert the given wildcard to a regular expression.
-        
+
         Arguments:
         wildcard -- A string representing a wild-card (like "/some_path/*")
         """
-        
+
         r = re.escape(wildcard)
         return r.replace('\*', ".*")
 
     def do_shutdown(self):
-        
+
         to_delete_list = self.http_daemons[:]
         
         self.logger.info("Shutting down the server")
