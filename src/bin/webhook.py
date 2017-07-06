@@ -14,6 +14,7 @@ import re
 import json
 import urlparse
 import errno
+import collections
 from cgi import parse_header, parse_multipart
 import splunk
 
@@ -38,14 +39,14 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             return
 
         # Make the resulting data
-        result = {
-                  'path' : path_only,
-                  'full_path' : self.path,
-                  'query' : query,
-                  'command' : self.command,
-                  'client_address' : self.client_address[0],
-                  'client_port' : self.client_address[1]
-                 }
+        result = collections.OrderedDict()
+
+        result['path'] = path_only
+        result['full_path'] = self.path
+        result['query'] = query
+        result['command'] = self.command
+        result['client_address'] = self.client_address[0]
+        result['client_port'] = self.client_address[1]
 
         # Parse the query string if need be
         if query_args is None:
@@ -61,14 +62,14 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
 
         # Add the query arguments to the string
         if query_args is not None:
-            for k, v in query_args.items():
-                result["parameter_" + k] = v
+            for key, value in query_args.items():
+                result["parameter_" + key] = value
 
         # Get the content-body
         content_len = int(self.headers.getheader('content-length', 0))
 
         if content_len > 0:
-            
+
             post_body = self.rfile.read(content_len)
 
             try:
@@ -77,8 +78,9 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                 # Could not parse output
                 body_json = None
 
-            # Get the data and include it
-            result.update(body_json)
+            # Include the data if we got some
+            if body_json is not None:
+                result.update(body_json)
 
         # Output the result
         self.server.output_results([result])
@@ -88,53 +90,53 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({"success":True}))
-        
+
     def do_GET(self):
         self.handle_request()
-        
+
     def do_POST(self):
-        
+
         post_args = {}
-        
+
         if 'content-type' in self.headers:
             ctype, pdict = parse_header(self.headers['content-type'])
-            
+
             if ctype == 'multipart/form-data':
                 post_args = parse_multipart(self.rfile, pdict)
             elif ctype == 'application/x-www-form-urlencoded':
                 length = int(self.headers['content-length'])
                 post_args = urlparse.parse_qs(self.rfile.read(length), keep_blank_values=1)
-        
+
         self.handle_request(post_args)
-        
+
 class WebServer:
-    
+
     MAX_ATTEMPTS_TO_START_SERVER = 60
-    
+
     def __init__(self, output_results, port, path, logger=None):
-        
+
         try:
-            
+
             # Make an instance of the server
             server = None
             attempts = 0
-            
+
             while server is None and attempts < WebServer.MAX_ATTEMPTS_TO_START_SERVER:
                 try:
                     server = HTTPServer(('', port), LogRequestsInSplunkHandler)
                 except IOError as e:
-                    
+
                     # Log a message noting that port is taken
                     if logger is not None:
                         logger.info("The web-server could not yet be started, attempt %i of %i", attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER)
-                    
+
                     server = None
                     time.sleep(2)
                     attempts = attempts + 1
-            
+
             # Stop if the server could not be started
             if server is None:
-                
+
                 # Log that it couldn't be started
                 if logger is not None:
                     logger.info("The web-server could not be started")
