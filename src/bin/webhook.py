@@ -22,8 +22,6 @@ import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     
-    logger = None
-
     def handle_request(self, query_args=None):
         
         # Get the simple path (without arguments)
@@ -94,8 +92,8 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                     # Could not parse output
                     parsed_body = None
 
-                    if self.logger is not None:
-                        self.logger.warn("Content body could not be parsed as JSON")
+                    if self.server.logger is not None:
+                        self.server.logger.warn("Content body could not be parsed as JSON")
 
             # Include the data if we got some
             if parsed_body is not None:
