@@ -36,7 +36,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"success":False}))
             return
-        
+
         # Make the resulting data
         result = {
                   'path' : path_only,
@@ -46,24 +46,40 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                   'client_address' : self.client_address[0],
                   'client_port' : self.client_address[1]
                  }
-                
+
         # Parse the query string if need be
         if query_args is None:
             query_args = {}
-            
+
         if query is not None and query != "":
             query_args_from_path = urlparse.parse_qs(query, keep_blank_values=True)
-            
+
             # Merge those obtained from the URL with those obtained from the POST arguments
             if query_args_from_path is not None:
                 query_args_from_path.update(query_args)
                 query_args = query_args_from_path
-            
+
         # Add the query arguments to the string
         if query_args is not None:
             for k, v in query_args.items():
                 result["parameter_" + k] = v
-        
+
+        # Get the content-body
+        content_len = int(self.headers.getheader('content-length', 0))
+
+        if content_len > 0:
+            
+            post_body = self.rfile.read(content_len)
+
+            try:
+                body_json = json.loads(post_body)
+            except ValueError:
+                # Could not parse output
+                body_json = None
+
+            # Get the data and include it
+            result.update(body_json)
+
         # Output the result
         self.server.output_results([result])
         
@@ -144,7 +160,7 @@ class WebServer:
     
 class WebhooksInput(ModularInput):
     """
-    The webhooks input modular input runs a web-server and pipes requests to the HTTP event collector.
+    The webhooks input modular input runs a web-server and pipes data from the requests to Splunk.
     """
     
     def __init__(self, timeout=30, **kwargs):
