@@ -223,7 +223,11 @@ class WebhooksInput(ModularInput):
         self.logger.info("Shutting down the server")
 
         for httpd in to_delete_list:
-            httpd.socket.close()
+
+            # https://lukemurphey.net/issues/1908
+            if hasattr(httpd, 'socket'):
+                httpd.socket.close()
+
             httpd.shutdown()
 
             del self.http_daemons[httpd]
