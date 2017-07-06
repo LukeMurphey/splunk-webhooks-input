@@ -162,15 +162,15 @@ class WebServer:
                 # Log that it couldn't be started
                 if logger is not None:
                     logger.info("The web-server could not be started")
-            
+
                 # Stop, we weren't successful
                 return
-                
+
             # Save the parameters
             server.output_results = output_results
             server.path = path
             server.logger = logger
-            
+
             # Start the serving
             server.serve_forever()
         except IOError as e:
@@ -193,11 +193,11 @@ class WebhooksInput(ModularInput):
                        'use_single_instance': "false"}
 
         args = [
-                IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
-                Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True)
-                ]
+            IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
+            Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True)
+        ]
 
-        ModularInput.__init__( self, scheme_args, args, logger_name="webhook_modular_input" )
+        ModularInput.__init__(self, scheme_args, args, logger_name="webhook_modular_input")
 
         if timeout > 0:
             self.timeout = timeout
@@ -215,31 +215,30 @@ class WebhooksInput(ModularInput):
         wildcard -- A string representing a wild-card (like "/some_path/*")
         """
 
-        r = re.escape(wildcard)
-        return r.replace('\*', ".*")
+        regex_escaped = re.escape(wildcard)
+        return regex_escaped.replace('\*', ".*")
 
     def do_shutdown(self):
 
         to_delete_list = self.http_daemons[:]
-        
+
         self.logger.info("Shutting down the server")
-        
+
         for httpd in to_delete_list:
             httpd.socket.close()
             httpd.shutdown()
-            
+
             del self.http_daemons[httpd]
-            
 
     def run(self, stanza, cleaned_params, input_config):
-        
+
         # Make the parameters
-        port       = cleaned_params.get("port", 8080)
+        port = cleaned_params.get("port", 8080)
         sourcetype = cleaned_params.get("sourcetype", "webhook")
-        host       = cleaned_params.get("host", None)
-        index      = cleaned_params.get("index", "default")
-        path       = cleaned_params.get("path", None)
-        source     = stanza
+        host = cleaned_params.get("host", None)
+        index = cleaned_params.get("index", "default")
+        path = cleaned_params.get("path", None)
+        source = stanza
 
         # Convert the path to a regular expression
         if path is not None and path != "":
@@ -252,18 +251,19 @@ class WebhooksInput(ModularInput):
                 self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
         # Start the web-server
-        self.logger.info("Starting server on port=%r, path=%r", port, path_re)  
+        self.logger.info("Starting server on port=%r, path=%r", port, path_re)
         httpd = WebServer(output_results, port, path_re, logger=self.logger)
         self.http_daemons.append(httpd)
-            
+  
 if __name__ == '__main__':
     webhooks_input = None
-    
+
     try:
         webhooks_input = WebhooksInput()
         webhooks_input.execute()
         sys.exit(0)
     except Exception:
         if webhooks_input is not None and webhooks_input.logger is not None:
-            webhooks_input.logger.exception("Unhandled exception was caught, this may be due to a defect in the script") # This logs general exceptions that would have been unhandled otherwise (such as coding errors)
+             # This logs general exceptions that would have been unhandled otherwise (such as coding errors)
+            webhooks_input.logger.exception("Unhandled exception was caught, this may be due to a defect in the script")
         raise
