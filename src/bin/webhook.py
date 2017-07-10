@@ -43,13 +43,6 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         # Make the resulting data
         result = collections.OrderedDict()
 
-        result['path'] = path_only
-        result['full_path'] = self.path
-        result['query'] = query
-        result['command'] = self.command
-        result['client_address'] = self.client_address[0]
-        result['client_port'] = self.client_address[1]
-
         # Parse the query string if need be
         if query_args is None:
             query_args = {}
@@ -65,7 +58,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         # Add the query arguments to the string
         if query_args is not None:
             for key, value in query_args.items():
-                result["parameter_" + key] = value
+                result[key] = value
 
         # Get the content-body
         content_len = int(self.headers.getheader('content-length', 0))
@@ -98,6 +91,14 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             # Include the data if we got some
             if parsed_body is not None:
                 result.update(parsed_body)
+
+        # Add the data regarding the query
+        result['path'] = path_only
+        result['full_path'] = self.path
+        result['query'] = query
+        result['command'] = self.command
+        result['client_address'] = self.client_address[0]
+        result['client_port'] = self.client_address[1]
 
         # Output the result
         self.server.output_results([result])
