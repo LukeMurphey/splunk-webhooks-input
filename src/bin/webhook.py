@@ -111,7 +111,10 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.handle_request()
-
+        
+    def do_HEAD(self):
+        self.handle_request()
+    
     def do_POST(self):
 
         post_args = {}
