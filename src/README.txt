@@ -66,4 +66,6 @@ Change History
 | 1.0     | Added support for parsing incoming data from the content-body                                                    |
 |         | Fixed error indicating that a socket didn't exist that sometimes happened when shutting down                     |
 |         | Fields based on the GET and POST parameters are no longer prepended with "parameter_"                            |
+|---------|------------------------------------------------------------------------------------------------------------------|
+| 1.1     | Added support for HEAD requests which allows ths input to work with Trello                                       |
 +---------+------------------------------------------------------------------------------------------------------------------+
