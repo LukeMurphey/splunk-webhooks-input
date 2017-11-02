@@ -5,6 +5,7 @@ This module implements a modular input consisting of a web-server that handles i
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 import sys
+import ssl
 import time
 import re
 import json
@@ -13,7 +14,7 @@ import errno
 import collections
 from cgi import parse_header, parse_multipart
 
-from webhooks_input_app.modular_input import ModularInput, Field, IntegerField
+from webhooks_input_app.modular_input import ModularInput, Field, IntegerField, FilePathField
 from webhooks_input_app.flatten import flatten
 
 from splunk.appserver.mrsparkle.lib.util import make_splunkhome_path
@@ -59,7 +60,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         if query_args is not None:
             for key, value in query_args.items():
                 result[key] = value
-
+        
         # Get the content-body
         content_len = int(self.headers.getheader('content-length', 0))
 
@@ -102,7 +103,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
 
         # Output the result
         self.server.output_results([result])
-        
+
         # Send a 200 request noting that this worked
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -137,7 +138,7 @@ class WebServer:
 
     MAX_ATTEMPTS_TO_START_SERVER = 60
 
-    def __init__(self, output_results, port, path, logger=None):
+    def __init__(self, output_results, port, path, cert_file=None, key_file=None, logger=None):
 
         try:
 
@@ -173,6 +174,10 @@ class WebServer:
             server.path = path
             server.logger = logger
 
+            # Setup a SSL socket if necessary
+            if cert_file is not None:
+                server.socket = ssl.wrap_socket(server.socket, certfile=cert_file, keyfile=key_file, server_side=True)
+
             # Start the serving
             server.serve_forever()
         except IOError as e:
@@ -195,8 +200,10 @@ class WebhooksInput(ModularInput):
                        'use_single_instance': "false"}
 
         args = [
-            IntegerField("port", "Port", 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
-            Field("path", "Path", 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True)
+            IntegerField('port', 'Port', 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
+            Field('path', 'Path', 'A wildcard that the path of requests must match (paths generally begin with a "/" and can include a wildcard)', none_allowed=True, empty_allowed=True),
+            FilePathField('key_file', 'SSL Certificate Key File', 'The path to the SSL certificate key file (if the certificate requires a key); typically uses .KEY file extension', none_allowed=True, empty_allowed=True, validate_file_existence=True),
+            FilePathField('cert_file', 'SSL Certificate File', 'The path to the SSL certificate file (if you want to use encryption); typically uses .DER, .PEM, .CRT, .CER file extensions', none_allowed=True, empty_allowed=True, validate_file_existence=True)
         ]
 
         ModularInput.__init__(self, scheme_args, args, logger_name="webhook_modular_input")
@@ -240,6 +247,9 @@ class WebhooksInput(ModularInput):
 
         # Make the parameters
         port = cleaned_params.get("port", 8080)
+        key_file = cleaned_params.get("key_file", None)
+        cert_file = cleaned_params.get("cert_file", None)
+
         sourcetype = cleaned_params.get("sourcetype", "webhook")
         host = cleaned_params.get("host", None)
         index = cleaned_params.get("index", "default")
@@ -253,14 +263,17 @@ class WebhooksInput(ModularInput):
             path_re = None
 
         def output_results(results):
+            """
+            This function will get the web-server to output the results to Splunk.
+            """
             for result in results:
                 self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
         # Start the web-server
         self.logger.info("Starting server on port=%r, path=%r", port, path_re)
-        httpd = WebServer(output_results, port, path_re, logger=self.logger)
+        httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
         self.http_daemons.append(httpd)
-  
+
 if __name__ == '__main__':
     webhooks_input = None
 
