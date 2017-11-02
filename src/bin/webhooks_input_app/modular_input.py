@@ -629,6 +629,8 @@ class FilePathField(Field):
         if self.validate_file_existence and not os.path.isfile(resolved_path):
             raise FieldValidationException("The parameter '%s' is not a valid path; '%s' does not exist" % (self.name, resolved_path))
 
+        return resolved_path
+
     def to_string(self, value):
         return value
 
