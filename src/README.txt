@@ -68,4 +68,7 @@ Change History
 |         | Fields based on the GET and POST parameters are no longer prepended with "parameter_"                            |
 |---------|------------------------------------------------------------------------------------------------------------------|
 | 1.1     | Added support for HEAD requests which allows ths input to work with Trello                                       |
+|---------|------------------------------------------------------------------------------------------------------------------|
+| 1.2     | Added support for using SSL/TLS                                                                                  |
+|         | Fixed issue where posts would sometimes freeze                                                                   |
 +---------+------------------------------------------------------------------------------------------------------------------+
