@@ -22,9 +22,9 @@ from splunk.models.base import SplunkAppObjModel
 import splunk
 
 class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
-    
-    def handle_request(self, query_args=None):
-        
+
+    def handle_request(self, query_args=None, content_read_already=False):
+
         # Get the simple path (without arguments)
         if self.path.find("?") < 0:
             path_only = self.path
@@ -32,7 +32,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         else:
             path_only = self.path[0:self.path.find("?")]
             query = self.path[self.path.find("?")+1:]
-        
+
         # Verify that the request matches the path, return a 404 otherwise
         if self.server.path is not None and not re.match(self.server.path, path_only):
             self.send_response(404)
@@ -60,11 +60,11 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         if query_args is not None:
             for key, value in query_args.items():
                 result[key] = value
-        
+
         # Get the content-body
         content_len = int(self.headers.getheader('content-length', 0))
 
-        if content_len > 0:
+        if content_len > 0 and not content_read_already:
 
             post_body = self.rfile.read(content_len)
             parsed_body = None
@@ -112,24 +112,27 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.handle_request()
-        
+
     def do_HEAD(self):
         self.handle_request()
-    
+
     def do_POST(self):
 
         post_args = {}
+        content_read_already = False
 
         if 'content-type' in self.headers:
             ctype, pdict = parse_header(self.headers['content-type'])
 
             if ctype == 'multipart/form-data':
                 post_args = parse_multipart(self.rfile, pdict)
+                content_read_already = True
             elif ctype == 'application/x-www-form-urlencoded':
                 length = int(self.headers['content-length'])
                 post_args = urlparse.parse_qs(self.rfile.read(length), keep_blank_values=1)
+                content_read_already = True
 
-        self.handle_request(post_args)
+        self.handle_request(post_args, content_read_already)
 
 class WebServer:
     """
@@ -270,7 +273,7 @@ class WebhooksInput(ModularInput):
                 self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
         # Start the web-server
-        self.logger.info("Starting server on port=%r, path=%r", port, path_re)
+        self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r", port, path_re, cert_file, key_file)
         httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
         self.http_daemons.append(httpd)
 

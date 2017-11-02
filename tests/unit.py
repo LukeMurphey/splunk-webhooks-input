@@ -2,6 +2,7 @@
 import unittest
 import sys
 import os
+import re
 import json
 import logging
 import threading
@@ -11,14 +12,58 @@ sys.path.append(os.path.join("..", "src", "bin"))
 
 from webhook import WebServer
 
-class TestSSL(unittest.TestCase):
+class WebhooksAppTest(unittest.TestCase):
+    DEFAULT_TEST_SERVER_PORT = 28080
+    config_loaded = False
+    port = DEFAULT_TEST_SERVER_PORT
+
     httpd = None
     thread = None
-    port = None
     path = '/test_run_webserver_with_ssl'
     results = None
 
-    def startServerThread(self):
+    def toInt(self, str_int):
+        if str_int is None:
+            return None
+        else:
+            return int(str_int)
+
+    def loadConfig(self, properties_file=None):
+
+        # Stop if we already loaded the configuration
+        if WebhooksAppTest.config_loaded:
+            return
+
+        # Load the port from the environment if possible. This might be get overridden by the local.properties file.
+        WebhooksAppTest.port = int(os.environ.get("DEFAULT_TEST_SERVER_PORT", WebhooksAppTest.DEFAULT_TEST_SERVER_PORT))
+
+        fp = None
+
+        if properties_file is None:
+            properties_file = os.path.join("..", "local.properties")
+
+            try:
+                fp = open(properties_file)
+            except IOError:
+                pass
+
+        if fp is not None:
+            regex = re.compile("(?P<key>[^=]+)[=](?P<value>.*)")
+
+            settings = {}
+
+            for line in fp.readlines():
+                r = regex.search(line)
+
+                if r is not None:
+                    d = r.groupdict()
+                    settings[d["key"]] = d["value"]
+
+            # Load the parameters from the local.properties file
+            WebhooksAppTest.port = settings.get("value.test.server_port", WebhooksAppTest.port)
+
+    @classmethod
+    def startServerThread(cls):
         """
         Create an instance of the webhooks web-server running SSL.
 
@@ -31,38 +76,38 @@ class TestSSL(unittest.TestCase):
             openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
         """
 
-        path_re = self.path + '/*'
+        path_re = cls.path + '/*'
         cert_file = os.path.abspath('certs/server.crt')
         key_file = os.path.abspath('certs/server.key')
         logger = logging.getLogger('test_webhooks')
-        
+
         def output_results(results):
             """
             This function will get the results from the web-server and verify them.
             """
             for result in results:
-                self.results.append(result)
-                print result
-                pass
-        print "Starting..."
-        self.httpd = WebServer(output_results, self.port, path_re, cert_file, key_file, logger=logger)
-        #self.httpd = WebServer(output_results, self.port, path_re, logger=logger)
-        print "Done"
+                cls.results.append(result)
 
-    def setUp(self):
-        self.port = 18080
-        self.results = []
-        #self.startServerThread()
-        thread = threading.Thread(target=self.startServerThread)
-        thread.setDaemon(True)
-        thread.start()
+        cls.results = []
+        cls.httpd = WebServer(output_results, cls.port, path_re, cert_file, key_file, logger=logger)
 
-    def tearDown(self):
-        if self.httpd is not None and hasattr(self.httpd, 'socket'):
-            self.httpd.socket.close()
+    @classmethod
+    def setUp(cls):
+        if cls.results is not None:
+            cls.results[:] = []
 
-        if self.httpd is not None:
-            self.httpd.shutdown()
+    @classmethod
+    def setUpClass(cls):
+
+        if cls.thread is None:
+            cls.thread = threading.Thread(target=cls.startServerThread)
+            cls.thread.setDaemon(True)
+            cls.thread.start()
+
+class TestSSL(WebhooksAppTest):
+    """
+    this tests the input ability to work with SSL.
+    """
 
     def test_run_webserver_with_ssl_get(self):
         """
@@ -70,13 +115,27 @@ class TestSSL(unittest.TestCase):
         request.
         """
 
-        url = 'https://127.0.0.1:' + str(self.port) + self.path + '/TEST?test_run_webserver_with_ssl=SOMETESTVALUE'
+        url = 'https://127.0.0.1:' + str(self.port) + self.path + '/TEST?test_run_webserver_with_ssl_get=SOMETESTVALUE'
         response = requests.get(url, verify=False, timeout=5)
         response_parsed = json.loads(response.text)
 
         self.assertEquals(response_parsed['success'], True)
         self.assertEquals(response.status_code, 200)
-        self.assertEquals(self.results[0]['test_run_webserver_with_ssl'][0], 'SOMETESTVALUE')
+
+        self.assertEquals(self.results[0]['test_run_webserver_with_ssl_get'][0], 'SOMETESTVALUE')
+
+    def test_run_webserver_with_ssl_post(self):
+        """
+        Try to run the webhooks input with SSL to ensure that it loads correctly using a POST request.
+        """
+
+        url = 'https://127.0.0.1:' + str(self.port) + self.path + '/TEST'
+        response = requests.post(url, verify=False,  data={'test_run_webserver_with_ssl_post':'SOMETESTVALUE'}, timeout=5)
+        response_parsed = json.loads(response.text)
+
+        self.assertEquals(response_parsed['success'], True)
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(TestSSL.results[0]['test_run_webserver_with_ssl_post'][0], 'SOMETESTVALUE')
 
 if __name__ == "__main__":
     unittest.main()
