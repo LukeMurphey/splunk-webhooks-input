@@ -205,5 +205,5 @@ class TestWebhooksServerSSL(TestWebhooksServer):
 
 if __name__ == "__main__":
     test_dir = '../../tmp/test_reports'
-    shutil.rmtree(test_dir, ignore_errors=True)
+    shutil.rmtree('../tmp/test_reports', ignore_errors=True)
     unittest.main(testRunner=HtmlTestRunner.HTMLTestRunner(output=test_dir))
