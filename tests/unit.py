@@ -9,8 +9,10 @@ import threading
 import requests
 
 sys.path.append(os.path.join("..", "src", "bin"))
-
 from webhook import WebServer
+
+sys.path.append(os.path.join("lib"))
+import HtmlTestRunner
 
 class WebhooksAppTest(unittest.TestCase):
     """
@@ -154,4 +156,4 @@ class TestSSL(WebhooksAppTest):
         self.assertEquals(self.results[0]['test_run_webserver_with_ssl_post'][0], 'SOMETESTVALUE')
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(testRunner=HtmlTestRunner.HTMLTestRunner(output='../tmp/test_reports'))
