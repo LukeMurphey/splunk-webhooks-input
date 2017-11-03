@@ -13,8 +13,7 @@ import requests
 sys.path.append(os.path.join("..", "src", "bin"))
 from webhook import WebServer
 
-sys.path.append(os.path.join("lib"))
-import HtmlTestRunner
+import HTMLTestRunner
 
 class WebhooksAppTest(object):
     """
@@ -217,6 +216,8 @@ class TestWebhooksServerSSL(TestWebhooksServer):
     protocol = 'https'
 
 if __name__ == "__main__":
-    test_dir = '../tmp/test_reports'
-    shutil.rmtree(test_dir, ignore_errors=True)
-    unittest.main(testRunner=HtmlTestRunner.HTMLTestRunner(output='../' + test_dir))
+    with open('../tmp/test_report.html', 'w') as report_file:
+        test_runner = HTMLTestRunner.HTMLTestRunner(
+            stream=report_file
+        )
+        unittest.main(testRunner=test_runner)
