@@ -4,6 +4,7 @@ import sys
 import os
 import re
 import json
+import time
 import logging
 import shutil
 import threading
@@ -138,11 +139,23 @@ class WebhooksAppTest(object):
         # Stop the existing server if necessary
         if cls.httpd is not None:
             cls.httpd.stop_serving()
+            cls.httpd = None
 
         # Start the new one
         cls.thread = threading.Thread(target=cls.start_server)
         cls.thread.setDaemon(True)
         cls.thread.start()
+
+        attempts = 0
+
+        sys.stdout.write("Waiting for web-server to start ...")
+        sys.stdout.flush()
+
+        while cls.httpd is None and attempts < 75:
+            time.sleep(4)
+            attempts = attempts + 1
+            sys.stdout.write(".")
+            sys.stdout.flush()
 
     @classmethod
     def tearDownClass(cls):
@@ -204,6 +217,6 @@ class TestWebhooksServerSSL(TestWebhooksServer):
     protocol = 'https'
 
 if __name__ == "__main__":
-    test_dir = '../../tmp/test_reports'
-    shutil.rmtree('../tmp/test_reports', ignore_errors=True)
-    unittest.main(testRunner=HtmlTestRunner.HTMLTestRunner(output=test_dir))
+    test_dir = '../tmp/test_reports'
+    shutil.rmtree(test_dir, ignore_errors=True)
+    unittest.main(testRunner=HtmlTestRunner.HTMLTestRunner(output='../' + test_dir))
