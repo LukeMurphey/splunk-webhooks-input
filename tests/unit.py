@@ -5,6 +5,7 @@ import os
 import re
 import json
 import logging
+import shutil
 import threading
 import requests
 
@@ -204,4 +205,5 @@ class TestWebhooksServerSSL(TestWebhooksServer):
 
 if __name__ == "__main__":
     test_dir = '../../tmp/test_reports'
+    shutil.rmtree(test_dir, ignore_errors=True)
     unittest.main(testRunner=HtmlTestRunner.HTMLTestRunner(output=test_dir))
