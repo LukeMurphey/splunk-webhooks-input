@@ -143,53 +143,72 @@ class WebServer:
 
     def __init__(self, output_results, port, path, cert_file=None, key_file=None, logger=None):
 
-        try:
+        # Make an instance of the server
+        server = None
+        attempts = 0
 
-            # Make an instance of the server
-            server = None
-            attempts = 0
+        while server is None and attempts < WebServer.MAX_ATTEMPTS_TO_START_SERVER:
+            try:
+                server = HTTPServer(('', port), LogRequestsInSplunkHandler)
+            except IOError as e:
 
-            while server is None and attempts < WebServer.MAX_ATTEMPTS_TO_START_SERVER:
-                try:
-                    server = HTTPServer(('', port), LogRequestsInSplunkHandler)
-                except IOError as e:
-
-                    # Log a message noting that port is taken
-                    if logger is not None:
-                        logger.info("The web-server could not yet be started, attempt %i of %i", attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER)
-
-                    server = None
-                    time.sleep(2)
-                    attempts = attempts + 1
-
-            # Stop if the server could not be started
-            if server is None:
-
-                # Log that it couldn't be started
+                # Log a message noting that port is taken
                 if logger is not None:
-                    logger.info("The web-server could not be started")
+                    logger.info("The web-server could not yet be started, attempt %i of %i",
+                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER)
 
-                # Stop, we weren't successful
-                return
+                server = None
+                time.sleep(2)
+                attempts = attempts + 1
 
-            # Save the parameters
-            server.output_results = output_results
-            server.path = path
-            server.logger = logger
+        # Stop if the server could not be started
+        if server is None:
 
-            # Setup a SSL socket if necessary
-            if cert_file is not None:
-                server.socket = ssl.wrap_socket(server.socket, certfile=cert_file, keyfile=key_file, server_side=True)
+            # Log that it couldn't be started
+            if logger is not None:
+                logger.info("The web-server could not be started")
 
-            # Start the serving
-            server.serve_forever()
+            # Stop, we weren't successful
+            return
+
+        # Save the parameters
+        server.output_results = output_results
+        server.path = path
+        server.logger = logger
+
+        # Setup a SSL socket if necessary
+        if cert_file is not None:
+            server.socket = ssl.wrap_socket(
+                server.socket, certfile=cert_file, keyfile=key_file, server_side=True)
+
+        # Keep a server instance around
+        self.server = server
+
+    def start_serving(self):
+        """
+        Start the server.
+        """
+
+        try:
+            self.server.serve_forever()
         except IOError as e:
-            if server.logger is not None:
+            if self.server.logger is not None:
                 if e.errno == errno.EPIPE:
                     # Broken pipe: happens when the input shuts down or when remote peer disconnects
                     pass
                 else:
-                    server.logger.warn("IO error when serving the web-server: %s", str(e))
+                    self.server.logger.warn("IO error when serving the web-server: %s", str(e))
+
+    def stop_serving(self):
+        """
+        Stop the server.
+        """
+
+        self.server.shutdown()
+
+        # https://lukemurphey.net/issues/1908
+        if hasattr(self.server, 'socket'):
+            self.server.socket.close()
 
 class WebhooksInput(ModularInput):
     """
@@ -237,12 +256,7 @@ class WebhooksInput(ModularInput):
         self.logger.info("Shutting down the server")
 
         for httpd in to_delete_list:
-
-            # https://lukemurphey.net/issues/1908
-            if hasattr(httpd, 'socket'):
-                httpd.socket.close()
-
-            httpd.shutdown()
+            httpd.stop_serving()
 
             del self.http_daemons[httpd]
 
@@ -276,6 +290,7 @@ class WebhooksInput(ModularInput):
         self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r", port, path_re, cert_file, key_file)
         httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
         self.http_daemons.append(httpd)
+        httpd.start_serving()
 
 if __name__ == '__main__':
     webhooks_input = None
