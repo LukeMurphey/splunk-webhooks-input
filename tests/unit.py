@@ -5,6 +5,7 @@ import os
 import re
 import json
 import time
+import errno
 import logging
 import shutil
 import threading
@@ -216,7 +217,16 @@ class TestWebhooksServerSSL(TestWebhooksServer):
     protocol = 'https'
 
 if __name__ == "__main__":
-    with open('../tmp/test_report.html', 'w') as report_file:
+    report_path = os.path.join('..', os.environ.get('TEST_OUTPUT', 'tmp/test_report.html'))
+
+    # Make the test directory
+    try:
+        os.makedirs(os.path.dirname(report_path))
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
+    with open(report_path, 'w') as report_file:
         test_runner = HTMLTestRunner.HTMLTestRunner(
             stream=report_file
         )
