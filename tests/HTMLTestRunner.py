@@ -253,7 +253,9 @@ function showClassDetail(cid, count) {
     for (var i = 0; i < count; i++) {
         tid = id_list[i];
         if (toHide) {
-            document.getElementById('div_'+tid).style.display = 'none'
+            if(document.getElementById('div_'+tid)){
+                document.getElementById('div_'+tid).style.display = 'none';
+            }
             document.getElementById(tid).className = 'hiddenRow';
         }
         else {
@@ -388,8 +390,8 @@ a.popup_link:hover {
 .failClass  { background-color: #fa842d; color: white;}
 .errorClass { background-color: #fa2d2d; color: white;}
 .passCase   { color: #00c853; }
-.failCase   { color: #fa842d; font-weight: bold; }
-.errorCase  { color: #fa2d2d; font-weight: bold; }
+.failCase   { color: #fa842d; background-color: #f9ede4; }
+.errorCase  { color: #fa2d2d; background-color: #ffefef }
 .hiddenRow  { display: none; }
 .testcase   { margin-left: 2em; }
 
