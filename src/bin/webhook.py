@@ -150,12 +150,12 @@ class WebServer:
         while server is None and attempts < WebServer.MAX_ATTEMPTS_TO_START_SERVER:
             try:
                 server = HTTPServer(('', port), LogRequestsInSplunkHandler)
-            except IOError as e:
+            except IOError as exception:
 
                 # Log a message noting that port is taken
                 if logger is not None:
-                    logger.info("The web-server could not yet be started, attempt %i of %i",
-                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER)
+                    logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s"',
+                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception))
 
                 server = None
                 time.sleep(2)
@@ -191,13 +191,13 @@ class WebServer:
 
         try:
             self.server.serve_forever()
-        except IOError as e:
+        except IOError as exception:
             if self.server.logger is not None:
-                if e.errno == errno.EPIPE:
+                if exception.errno == errno.EPIPE:
                     # Broken pipe: happens when the input shuts down or when remote peer disconnects
                     pass
                 else:
-                    self.server.logger.warn("IO error when serving the web-server: %s", str(e))
+                    self.server.logger.warn("IO error when serving the web-server: %s", str(exception))
 
     def stop_serving(self):
         """
