@@ -158,7 +158,7 @@ class WebServer:
                                 attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception))
 
                 server = None
-                time.sleep(2)
+                time.sleep(20)
                 attempts = attempts + 1
 
         # Stop if the server could not be started
