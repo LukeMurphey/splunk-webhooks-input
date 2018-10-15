@@ -290,7 +290,7 @@ class WebhooksInput(ModularInput):
         self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s", port, path_re, cert_file, key_file, source)
         httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
 
-        if httpd.server is not None:
+        if hasattr(httpd, 'server') and httpd.server is not None:
             self.http_daemons.append(httpd)
             httpd.start_serving()
 
