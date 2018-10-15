@@ -297,8 +297,10 @@ class WebhooksInput(ModularInput):
         if hasattr(httpd, 'server') and httpd.server is not None:
             self.http_daemons.append(httpd)
             httpd.start_serving()
+
+            self.logger.info("Successfully started server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
         else:
-            self.logger.info("Input could not be started for pid=%r", os.getpid())
+            self.logger.info("Server could not be started, pid=%r", os.getpid())
 
 if __name__ == '__main__':
     webhooks_input = None
