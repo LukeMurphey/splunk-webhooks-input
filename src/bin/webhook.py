@@ -158,8 +158,8 @@ class WebServer:
 
                 # Log a message noting that port is taken
                 if logger is not None:
-                    logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s"',
-                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception))
+                    logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s", pid="%r"',
+                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception), os.getpid())
 
                 server = None
                 time.sleep(20)
