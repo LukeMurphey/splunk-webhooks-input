@@ -232,14 +232,14 @@ class WebhooksInput(ModularInput):
             FilePathField('cert_file', 'SSL Certificate File', 'The path to the SSL certificate file (if you want to use encryption); typically uses .DER, .PEM, .CRT, .CER file extensions', none_allowed=True, empty_allowed=True, validate_file_existence=True)
         ]
 
-        ModularInput.__init__(self, scheme_args, args, logger_name="webhook_modular_input")
+        ModularInput.__init__(self, scheme_args, args, logger_name="webhook_modular_input", sleep_interval=60)
 
         if timeout > 0:
             self.timeout = timeout
         else:
             self.timeout = 30
 
-        self.http_daemons = []
+        self.http_daemons = {}
 
     @classmethod
     def wildcard_to_re(cls, wildcard):
@@ -255,14 +255,13 @@ class WebhooksInput(ModularInput):
 
     def do_shutdown(self):
 
-        to_delete_list = self.http_daemons[:]
+        self.logger.info("Shutting down the servers")
 
-        self.logger.info("Shutting down the server")
-
-        for httpd in to_delete_list:
+        for stanza, httpd in self.http_daemons.items():
             httpd.stop_serving()
+            del self.http_daemons[stanza]
 
-            del self.http_daemons[httpd]
+            self.logger.info("Stopping server, stanza=%s, pid=%r", stanza, os.getpid())
 
     def run(self, stanza, cleaned_params, input_config):
 
@@ -277,30 +276,33 @@ class WebhooksInput(ModularInput):
         path = cleaned_params.get("path", None)
         source = stanza
 
-        # Convert the path to a regular expression
-        if path is not None and path != "":
-            path_re = self.wildcard_to_re(path)
-        else:
-            path_re = None
+        # See if the daemon is already started and start it if necessary
+        if stanza not in self.http_daemons:
 
-        def output_results(results):
-            """
-            This function will get the web-server to output the results to Splunk.
-            """
-            for result in results:
-                self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
+            # Convert the path to a regular expression
+            if path is not None and path != "":
+                path_re = self.wildcard_to_re(path)
+            else:
+                path_re = None
 
-        # Start the web-server
-        self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
-        httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
+            def output_results(results):
+                """
+                This function will get the web-server to output the results to Splunk.
+                """
+                for result in results:
+                    self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
-        if hasattr(httpd, 'server') and httpd.server is not None:
-            self.http_daemons.append(httpd)
-            httpd.start_serving()
+            # Start the web-server
+            self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
+            httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
 
-            self.logger.info("Successfully started server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
-        else:
-            self.logger.info("Server could not be started, pid=%r", os.getpid())
+            if hasattr(httpd, 'server') and httpd.server is not None:
+                self.http_daemons[stanza] = httpd
+                httpd.start_serving()
+
+                self.logger.info("Successfully started server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
+            else:
+                self.logger.info("Server could not be started, pid=%r", os.getpid())
 
 if __name__ == '__main__':
     webhooks_input = None
