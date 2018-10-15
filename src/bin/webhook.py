@@ -14,7 +14,11 @@ import errno
 import collections
 from cgi import parse_header, parse_multipart
 
-from webhooks_input_app.modular_input import ModularInput, Field, IntegerField, FilePathField
+import os
+path_to_mod_input_lib = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modular_input.zip')
+sys.path.insert(0, path_to_mod_input_lib)
+from modular_input import ModularInput, Field, IntegerField, FilePathField
+
 from webhooks_input_app.flatten import flatten
 
 from splunk.appserver.mrsparkle.lib.util import make_splunkhome_path
@@ -287,12 +291,14 @@ class WebhooksInput(ModularInput):
                 self.output_event(result, stanza, index=index, source=source, sourcetype=sourcetype, host=host, unbroken=True, close=True)
 
         # Start the web-server
-        self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s", port, path_re, cert_file, key_file, source)
+        self.logger.info("Starting server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
         httpd = WebServer(output_results, port, path_re, cert_file, key_file, logger=self.logger)
 
         if hasattr(httpd, 'server') and httpd.server is not None:
             self.http_daemons.append(httpd)
             httpd.start_serving()
+        else:
+            self.logger.info("Input could not be started for pid=%r", os.getpid())
 
 if __name__ == '__main__':
     webhooks_input = None
