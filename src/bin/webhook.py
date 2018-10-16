@@ -12,6 +12,7 @@ import json
 import urlparse
 import errno
 import collections
+from threading import Thread
 from cgi import parse_header, parse_multipart
 
 import os
@@ -143,7 +144,7 @@ class WebServer:
     This class implements an instance of a web-server that listens for incoming webhooks.
     """
 
-    MAX_ATTEMPTS_TO_START_SERVER = 60
+    MAX_ATTEMPTS_TO_START_SERVER = 1
 
     def __init__(self, output_results, port, path, cert_file=None, key_file=None, logger=None):
 
@@ -156,13 +157,15 @@ class WebServer:
                 server = HTTPServer(('', port), LogRequestsInSplunkHandler)
             except IOError as exception:
 
-                # Log a message noting that port is taken
-                if logger is not None:
-                    logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s", pid="%r"',
-                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception), os.getpid())
+                if WebServer.MAX_ATTEMPTS_TO_START_SERVER > 1:
+                    # Log a message noting that port is taken
+                    if logger is not None:
+                        logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s", pid="%r"',
+                                    attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception), os.getpid())
+
+                    time.sleep(1)
 
                 server = None
-                time.sleep(20)
                 attempts = attempts + 1
 
         # Stop if the server could not be started
@@ -170,7 +173,7 @@ class WebServer:
 
             # Log that it couldn't be started
             if logger is not None:
-                logger.info("The web-server could not be started")
+                logger.info('The web-server could not be started, pid="%r"', os.getpid())
 
             # Stop, we weren't successful
             return
@@ -223,7 +226,7 @@ class WebhooksInput(ModularInput):
 
         scheme_args = {'title': "Webhook",
                        'description': "Retrieve information from a webhook",
-                       'use_single_instance': "false"}
+                       'use_single_instance': True}
 
         args = [
             IntegerField('port', 'Port', 'The port to run the web-server on', none_allowed=False, empty_allowed=False),
@@ -276,6 +279,13 @@ class WebhooksInput(ModularInput):
         path = cleaned_params.get("path", None)
         source = stanza
 
+        # Log the number of servers that are running
+        if self.use_single_instance:
+            if hasattr(os, 'getppid'):
+                self.logger.info('Number of servers=%r, pid=%s, ppid=%r', len(self.http_daemons), os.getpid(), os.getppid())
+            else:
+                self.logger.info('Number of servers=%r, pid=%s', len(self.http_daemons), os.getpid())
+
         # See if the daemon is already started and start it if necessary
         if stanza not in self.http_daemons:
 
@@ -298,7 +308,15 @@ class WebhooksInput(ModularInput):
 
             if hasattr(httpd, 'server') and httpd.server is not None:
                 self.http_daemons[stanza] = httpd
-                httpd.start_serving()
+
+                # Use threads if this is using single instance mode
+                if self.use_single_instance:
+                    thread = Thread(target=httpd.start_serving)
+                    thread.start()
+
+                # Otherwise, just run the server and block on it until it is done
+                else:
+                    httpd.start_serving()
 
                 self.logger.info("Successfully started server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
             else:
