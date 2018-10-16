@@ -144,7 +144,7 @@ class WebServer:
     This class implements an instance of a web-server that listens for incoming webhooks.
     """
 
-    MAX_ATTEMPTS_TO_START_SERVER = 1
+    MAX_ATTEMPTS_TO_START_SERVER = 5
 
     def __init__(self, output_results, port, path, cert_file=None, key_file=None, logger=None):
 
@@ -157,13 +157,13 @@ class WebServer:
                 server = HTTPServer(('', port), LogRequestsInSplunkHandler)
             except IOError as exception:
 
-                if WebServer.MAX_ATTEMPTS_TO_START_SERVER > 1:
-                    # Log a message noting that port is taken
-                    if logger is not None:
-                        logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s", pid="%r"',
-                                    attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception), os.getpid())
+                # Log a message noting that port is taken
+                if logger is not None:
+                    logger.info('The web-server could not yet be started, attempt %i of %i, reason="%s", pid="%r"',
+                                attempts, WebServer.MAX_ATTEMPTS_TO_START_SERVER, str(exception), os.getpid())
 
-                    time.sleep(1)
+
+                    time.sleep(3)
 
                 server = None
                 attempts = attempts + 1
@@ -258,8 +258,6 @@ class WebhooksInput(ModularInput):
 
     def do_shutdown(self):
 
-        self.logger.info("Shutting down the servers")
-
         for stanza, httpd in self.http_daemons.items():
             httpd.stop_serving()
             del self.http_daemons[stanza]
@@ -319,8 +317,6 @@ class WebhooksInput(ModularInput):
                     httpd.start_serving()
 
                 self.logger.info("Successfully started server on port=%r, path=%r, cert_file=%r, key_file=%r, stanza=%s, pid=%r", port, path_re, cert_file, key_file, source, os.getpid())
-            else:
-                self.logger.info("Server could not be started, pid=%r", os.getpid())
 
 if __name__ == '__main__':
     webhooks_input = None
