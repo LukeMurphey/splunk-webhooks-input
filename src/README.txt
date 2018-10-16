@@ -73,4 +73,6 @@ Change History
 |         | Fixed issue where POST requests would sometimes freeze                                                           |
 |---------|------------------------------------------------------------------------------------------------------------------|
 | 1.2.1   | Added better logging for why a port could not be opened                                                          |
+|         | Fixed issue where sometimes the port was not opened when restarting                                              |
+|         | Changed input to single-instance mode; only one instance of code will now manage all of the inputs               |
 +---------+------------------------------------------------------------------------------------------------------------------+
