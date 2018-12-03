@@ -83,7 +83,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                 }
 
             # Handle JSON
-            elif content_type == "application/json":
+            elif re.search('^application/json([;].*)?', content_type) is not None:
                 try:
                     body_json = json.loads(post_body)
                     parsed_body = flatten(body_json)
