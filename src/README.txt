@@ -75,4 +75,6 @@ Change History
 | 1.2.1   | Added better logging for why a port could not be opened                                                          |
 |         | Fixed issue where sometimes the port was not opened when restarting                                              |
 |         | Changed input to single-instance mode; only one instance of code will now manage all of the inputs               |
+|---------|------------------------------------------------------------------------------------------------------------------|
+| 1.2.2   | Fixed issue where the webhook didn't recognize incoming JSON when the HTTP header included the encoding          |
 +---------+------------------------------------------------------------------------------------------------------------------+
