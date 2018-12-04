@@ -206,6 +206,38 @@ class TestWebhooksServer(WebhooksAppTest, unittest.TestCase):
         self.assertEquals(response.status_code, 200)
         self.assertEquals(self.results[0]['test_run_webserver_with_post'][0], 'SOMETESTVALUE')
 
+    def test_run_webserver_with_encoding_in_header(self):
+        """
+        Try to run the webhooks input and ensure that it accepts the content-type when it includes
+        the encoding (like "application/json; charset=utf-8" instead of "application/json").
+
+        See https://lukemurphey.net/issues/2335
+        """
+
+        url = self.protocol + '://127.0.0.1:' + str(self.port) + self.path
+        response = requests.post(url, verify=False, timeout=5, headers={'content-type': 'application/json; charset=utf-8'}, data=json.dumps({"key": "value"}))
+        response_parsed = json.loads(response.text)
+
+        self.assertEquals(response_parsed['success'], True)
+        self.assertEquals(response.status_code, 200)
+
+        self.assertEquals(self.results[0]['key'], 'value')
+
+    def test_run_webserver_with_incorrect_content_type(self):
+        """
+        Try to run the webhooks input and ensure that it accepts the content-type when it includes
+        the encoding (like "application/json; charset=utf-8" instead of "application/json")
+        """
+
+        url = self.protocol + '://127.0.0.1:' + str(self.port) + self.path
+        response = requests.post(url, verify=False, timeout=5, headers={'content-type': 'application/jfoobarquix'}, data=json.dumps({"key": "value"}))
+        response_parsed = json.loads(response.text)
+
+        #self.assertEquals(response_parsed['success'], False)
+        self.assertEquals(response.status_code, 200)
+
+        self.assertFalse('key' in self.results[0])
+
     @classmethod
     def setUpClass(cls):
         cls.start_server_thread()
