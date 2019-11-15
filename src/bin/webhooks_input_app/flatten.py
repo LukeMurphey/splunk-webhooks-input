@@ -1,6 +1,12 @@
 import time
 import collections
 
+# Python 2+3 basestring
+try:
+    basestring
+except NameError:
+    basestring = str
+
 def is_list_of_lists(l):
     for item in l:
         if not isinstance(item, basestring) and isinstance(item, (list, tuple)):
@@ -10,7 +16,7 @@ def is_list_of_lists(l):
     
     return False
 
-def flatten(item, dictionary=None, name=None, ignore_blanks=False, separator="_"):
+def flatten(item, dictionary=None, name=None, ignore_blanks=False):
     
     if dictionary is None:
         dictionary = collections.OrderedDict()
@@ -21,7 +27,7 @@ def flatten(item, dictionary=None, name=None, ignore_blanks=False, separator="_"
     iterative_name = name
         
     if len(iterative_name) > 0:
-        iterative_name = name + separator
+        iterative_name = name + "."
     
     # Handle dictionaries
     if isinstance(item, dict):

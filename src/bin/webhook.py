@@ -2,14 +2,22 @@
 This module implements a modular input consisting of a web-server that handles incoming Webhooks.
 """
 
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+try:
+    # Python 2
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from urlparse import parse_qs
+
+except:
+    # Python 3
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from urllib.parse import parse_qs
+    unicode = str
 
 import sys
 import ssl
 import time
 import re
 import json
-import urlparse
 import errno
 import collections
 from threading import Thread
@@ -22,7 +30,7 @@ from modular_input import ModularInput, Field, IntegerField, FilePathField
 
 from webhooks_input_app.flatten import flatten
 
-from splunk.appserver.mrsparkle.lib.util import make_splunkhome_path
+from splunk.clilib.bundle_paths import make_splunkhome_path
 from splunk.models.base import SplunkAppObjModel
 import splunk
 
@@ -43,7 +51,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"success":False}))
+            self.write_json({"success":False})
             return
 
         # Make the resulting data
@@ -54,7 +62,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             query_args = {}
 
         if query is not None and query != "":
-            query_args_from_path = urlparse.parse_qs(query, keep_blank_values=True)
+            query_args_from_path = parse_qs(query, keep_blank_values=True)
 
             # Merge those obtained from the URL with those obtained from the POST arguments
             if query_args_from_path is not None:
@@ -67,14 +75,14 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                 result[key] = value
 
         # Get the content-body
-        content_len = int(self.headers.getheader('content-length', 0))
+        content_len = int(self.headers.get('content-length', 0))
 
         if content_len > 0 and not content_read_already:
 
             post_body = self.rfile.read(content_len)
             parsed_body = None
 
-            content_type = self.headers.getheader('content-type', "application/json")
+            content_type = self.headers.get('content-type', "application/json")
 
             # Handle plain text
             if content_type == "text/plain":
@@ -113,7 +121,15 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps({"success":True}))
+        self.write_json({"success":True})
+
+    def write_json(self, json_dict):
+        content = json.dumps(json_dict)
+
+        if isinstance(content, unicode):
+            content = content.encode('utf-8')
+        
+        self.wfile.write(content)
 
     def do_GET(self):
         self.handle_request()
@@ -134,7 +150,7 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                 content_read_already = True
             elif ctype == 'application/x-www-form-urlencoded':
                 length = int(self.headers['content-length'])
-                post_args = urlparse.parse_qs(self.rfile.read(length), keep_blank_values=1)
+                post_args = parse_qs(self.rfile.read(length), keep_blank_values=1)
                 content_read_already = True
 
         self.handle_request(post_args, content_read_already)

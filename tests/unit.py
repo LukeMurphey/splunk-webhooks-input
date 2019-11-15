@@ -181,10 +181,10 @@ class TestWebhooksServer(WebhooksAppTest, unittest.TestCase):
         response = requests.get(url, verify=False, timeout=5)
         response_parsed = json.loads(response.text)
 
-        self.assertEquals(response_parsed['success'], True)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response_parsed['success'], True)
+        self.assertEqual(response.status_code, 200)
 
-        self.assertEquals(self.results[0]['test_run_webserver_with_get'][0], 'SOMETESTVALUE')
+        self.assertEqual(self.results[0]['test_run_webserver_with_get'][0], 'SOMETESTVALUE')
 
     def test_run_webserver_with_post(self):
         """
@@ -200,9 +200,9 @@ class TestWebhooksServer(WebhooksAppTest, unittest.TestCase):
         response = requests.post(url, verify=False, data=data, timeout=5)
         response_parsed = json.loads(response.text)
 
-        self.assertEquals(response_parsed['success'], True)
-        self.assertEquals(response.status_code, 200)
-        self.assertEquals(self.results[0]['test_run_webserver_with_post'][0], 'SOMETESTVALUE')
+        self.assertEqual(response_parsed['success'], True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.results[0]['test_run_webserver_with_post'][0], 'SOMETESTVALUE')
 
     def test_run_webserver_with_encoding_in_header(self):
         """
@@ -216,10 +216,10 @@ class TestWebhooksServer(WebhooksAppTest, unittest.TestCase):
         response = requests.post(url, verify=False, timeout=5, headers={'content-type': 'application/json; charset=utf-8'}, data=json.dumps({"key": "value"}))
         response_parsed = json.loads(response.text)
 
-        self.assertEquals(response_parsed['success'], True)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response_parsed['success'], True)
+        self.assertEqual(response.status_code, 200)
 
-        self.assertEquals(self.results[0]['key'], 'value')
+        self.assertEqual(self.results[0]['key'], 'value')
 
     def test_run_webserver_with_incorrect_content_type(self):
         """
@@ -231,8 +231,8 @@ class TestWebhooksServer(WebhooksAppTest, unittest.TestCase):
         response = requests.post(url, verify=False, timeout=5, headers={'content-type': 'application/jfoobarquix'}, data=json.dumps({"key": "value"}))
         response_parsed = json.loads(response.text)
 
-        #self.assertEquals(response_parsed['success'], False)
-        self.assertEquals(response.status_code, 200)
+        #self.assertEqual(response_parsed['success'], False)
+        self.assertEqual(response.status_code, 200)
 
         self.assertFalse('key' in self.results[0])
 
