@@ -77,4 +77,6 @@ Change History
 |         | Changed input to single-instance mode; only one instance of code will now manage all of the inputs               |
 |---------|------------------------------------------------------------------------------------------------------------------|
 | 1.2.2   | Fixed issue where the webhook didn't recognize incoming JSON when the HTTP header included the encoding          |
+|---------|------------------------------------------------------------------------------------------------------------------|
+| 1.2.3   | Added support for Python 2 & 3                                                                                   |
 +---------+------------------------------------------------------------------------------------------------------------------+
