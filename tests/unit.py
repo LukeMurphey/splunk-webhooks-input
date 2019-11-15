@@ -14,8 +14,6 @@ import requests
 sys.path.append(os.path.join("..", "src", "bin"))
 from webhook import WebServer
 
-import HTMLTestRunner
-
 class WebhooksAppTest(object):
     """
     This provides some functionality for testing the webhooks app, including:
@@ -249,17 +247,4 @@ class TestWebhooksServerSSL(TestWebhooksServer):
     protocol = 'https'
 
 if __name__ == "__main__":
-    report_path = os.path.join('..', os.environ.get('TEST_OUTPUT', 'tmp/test_report.html'))
-
-    # Make the test directory
-    try:
-        os.makedirs(os.path.dirname(report_path))
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
-
-    with open(report_path, 'w') as report_file:
-        test_runner = HTMLTestRunner.HTMLTestRunner(
-            stream=report_file
-        )
-        unittest.main(testRunner=test_runner)
+    unittest.main()
