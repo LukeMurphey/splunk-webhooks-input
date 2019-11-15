@@ -77,11 +77,13 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
         # Get the content-body
         content_len = int(self.headers.get('content-length', 0))
 
+        # If content was provided, then parse it
         if content_len > 0 and not content_read_already:
 
             post_body = self.rfile.read(content_len)
             parsed_body = None
 
+            # Get the type so that we can parse it accordingly
             content_type = self.headers.get('content-type', "application/json")
 
             # Handle plain text
@@ -105,6 +107,26 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
             # Include the data if we got some
             if parsed_body is not None:
                 result.update(parsed_body)
+
+        # Convert the output to include strings if needed
+        """
+        for k, v in result.items():
+            key = k
+            value = v
+            modified = False
+        
+            if isinstance(v, bytes):
+                value = v.decode('utf-8')
+                modified = True
+
+            if isinstance(k, bytes):
+                key = k.decode('utf-8')
+                modified = True
+
+            if modified:
+                del result[k]
+                result[key] = value
+        """
 
         # Add the data regarding the query
         result['path'] = path_only
@@ -137,11 +159,15 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.handle_request()
 
+    def read_file(self, length):
+        return self.rfile.read(length)
+
     def do_POST(self):
 
         post_args = {}
         content_read_already = False
 
+        # Process the results
         if 'content-type' in self.headers:
             ctype, pdict = parse_header(self.headers['content-type'])
 
@@ -153,7 +179,39 @@ class LogRequestsInSplunkHandler(BaseHTTPRequestHandler):
                 post_args = parse_qs(self.rfile.read(length), keep_blank_values=1)
                 content_read_already = True
 
+        # Convert 
+        for k, v in post_args.items():
+            key = k
+            modified = False
+
+            # Make the key into a string
+            if isinstance(k, bytes):
+                key = k.decode('utf-8')
+                modified = True
+
+            # Make the values into a list of strings
+            converted_values, values_modified = self.convert_list_entries(v)
+
+            # Place the values back if necessary
+            if modified or values_modified:
+                del post_args[k]
+                post_args[key] = converted_values
+
         self.handle_request(post_args, content_read_already)
+
+    def convert_list_entries(self, args_list):
+        updated_list = []
+        modified = False
+
+        for entry in args_list:
+            if sys.version_info.major >= 3 and isinstance(entry, bytes):
+                updated_list.append(entry.decode('utf-8'))
+                modified = True
+            else:
+                updated_list.append(entry)
+
+        return updated_list, modified
+
 
 class WebServer:
     """
