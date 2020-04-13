@@ -318,6 +318,9 @@ class WebhooksInput(ModularInput):
 
         self.http_daemons = {}
 
+        # This maps the various daemons to the paths & stanzas that are handled
+        self.input_map = {}
+
     @classmethod
     def wildcard_to_re(cls, wildcard):
         """
@@ -337,6 +340,28 @@ class WebhooksInput(ModularInput):
             del self.http_daemons[stanza]
 
             self.logger.info("Stopping server, stanza=%s, pid=%r", stanza, os.getpid())
+
+    def add_to_input_map(self, port, stanza, path, output_results_fx):
+        # Create the entry for this input
+        new_handler_entry = {
+                stanza: stanza,
+                path: path,
+                output_results_fx: output_results_fx
+            }
+        
+        # Add the new port entry if necessary
+        if port not in self.input_map:
+            self.input_map[port] = [new_handler_entry]
+            return False
+
+        # Otherwise, add the entry to the existing port
+        else:
+            existing_entry = self.input_map[port]
+            existing_entry.append(new_handler_entry)
+            return True
+
+    def handle_webhook_call(self, port):
+        pass # TODO
 
     def run(self, stanza, cleaned_params, input_config):
 
