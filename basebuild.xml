@@ -443,16 +443,18 @@ You can customize the build process by placing properties in the default.propert
     </target>
     
 	<patternset id="substituted_files">
-    	<include name="**/*.conf" />
-        <include name="**/*.txt" />
-        <include name="**/*.xml" />
-    </patternset>
+		<include name="**/*.conf" />
+		<include name="**/*.txt" />
+		<include name="**/*.xml" />
+		<include name="**/app.manifest" />
+	</patternset>
 
 	<patternset id="exclude_substituted_files">
-    	<exclude name="**/*.conf" />
-        <exclude name="**/*.txt" />
-        <exclude name="**/*.xml" />
-    </patternset>
+		<exclude name="**/*.conf" />
+		<exclude name="**/*.txt" />
+		<exclude name="**/*.xml" />
+		<exclude name="**/app.manifest" />
+	</patternset>
 
 	<patternset id="minified_files">
     	<include name="**/*.js" />
@@ -1062,7 +1064,7 @@ Below is an example of the entry in the file:
     <!-- ================================= 
           target: test.run_unit
          ================================= -->
-    <target name="test.run_unit" depends="test.setup">
+    <target name="test.run_unit">
 
 		<!-- Define a default value for the tests to run. Otherwise, arguments passed from the CLI will be used (e.g. ant test.run_unit -Dtest=TestPingParser) -->
 		<property name="test" value="" />
@@ -1121,7 +1123,7 @@ Below is an example of the entry in the file:
 			<isset property="appinspect.present"/>
  			<!-- Run appinspect on the package -->
 			<then>
-				<exec failonerror="true" executable="${value.test.appinspect_path}" dir="${value.build.packageoutput.directory}">
+				<exec failonerror="true" executable="${value.test.appinspect_path}" dir="${basedir}">
 					<arg line="inspect" />
 					<arg line="${value.build.package.file}" />
 				</exec>
